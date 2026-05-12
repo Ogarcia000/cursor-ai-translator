@@ -39,35 +39,19 @@
           <section class="subpanel">
             <div class="subpanel__heading">
               <h2>Motor de traduccion</h2>
-              <p>Elige local para mayor rapidez o API para mayor flexibilidad.</p>
+              <p>Para una experiencia rapida, usa un proveedor local.</p>
             </div>
 
             <label class="field">
-              <span>Proveedor</span>
+              <span>Proveedor local</span>
               <select id="provider" name="provider">
                 <option value="argos">Argos local</option>
                 <option value="ollama">Ollama local</option>
-                <option value="openai">OpenAI</option>
-                <option value="zai">Z.AI</option>
               </select>
             </label>
 
             <div id="provider-argos" class="provider-panel">
               <p class="helper">No requiere API key. Usa modelos instalados en tu equipo.</p>
-            </div>
-
-            <div id="provider-openai" class="provider-panel">
-              <div class="field-grid">
-                <label class="field">
-                  <span>OpenAI API key</span>
-                  <input id="openai-api-key" name="openaiApiKey" type="password" autocomplete="off" placeholder="Opcional si ya esta guardada">
-                </label>
-
-                <label class="field">
-                  <span>Modelo</span>
-                  <input id="openai-model" name="openaiModel" type="text" autocomplete="off" placeholder="gpt-5.4-mini">
-                </label>
-              </div>
             </div>
 
             <div id="provider-ollama" class="provider-panel">
@@ -85,27 +69,6 @@
               <p class="helper">Ollama debe estar instalado, corriendo y con el modelo ya descargado.</p>
             </div>
 
-            <div id="provider-zai" class="provider-panel">
-              <div class="field-grid">
-                <label class="field">
-                  <span>Z.AI API key</span>
-                  <input id="zai-api-key" name="zaiApiKey" type="password" autocomplete="off" placeholder="Opcional si ya esta guardada">
-                </label>
-
-                <label class="field">
-                  <span>Modelo</span>
-                  <input id="zai-model" name="zaiModel" type="text" autocomplete="off" placeholder="glm-4.7">
-                </label>
-
-                <label class="field">
-                  <span>Plan</span>
-                  <select id="zai-endpoint" name="zaiEndpoint">
-                    <option value="general">API general</option>
-                    <option value="coding">GLM Coding Plan</option>
-                  </select>
-                </label>
-              </div>
-            </div>
           </section>
 
           <section class="subpanel">
@@ -169,6 +132,58 @@
                 <span>Servidor local</span>
                 <input id="backend-url" name="backendUrl" type="url" autocomplete="off" placeholder="http://127.0.0.1:8787">
               </label>
+
+              <div class="remote-panel">
+                <div class="subpanel__heading">
+                  <h2>APIs remotas</h2>
+                  <p>Son opcionales y normalmente mas lentas que la configuracion local.</p>
+                </div>
+
+                <label class="field">
+                  <span>Proveedor remoto</span>
+                  <select id="remote-provider" name="remoteProvider">
+                    <option value="">No usar</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="zai">Z.AI</option>
+                  </select>
+                </label>
+
+                <div id="provider-openai" class="provider-panel">
+                  <div class="field-grid">
+                    <label class="field">
+                      <span>OpenAI API key</span>
+                      <input id="openai-api-key" name="openaiApiKey" type="password" autocomplete="off" placeholder="Opcional si ya esta guardada">
+                    </label>
+
+                    <label class="field">
+                      <span>Modelo</span>
+                      <input id="openai-model" name="openaiModel" type="text" autocomplete="off" placeholder="gpt-5.4-mini">
+                    </label>
+                  </div>
+                </div>
+
+                <div id="provider-zai" class="provider-panel">
+                  <div class="field-grid">
+                    <label class="field">
+                      <span>Z.AI API key</span>
+                      <input id="zai-api-key" name="zaiApiKey" type="password" autocomplete="off" placeholder="Opcional si ya esta guardada">
+                    </label>
+
+                    <label class="field">
+                      <span>Modelo</span>
+                      <input id="zai-model" name="zaiModel" type="text" autocomplete="off" placeholder="glm-4.7">
+                    </label>
+
+                    <label class="field">
+                      <span>Plan</span>
+                      <select id="zai-endpoint" name="zaiEndpoint">
+                        <option value="general">API general</option>
+                        <option value="coding">GLM Coding Plan</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </details>
 

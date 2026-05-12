@@ -19,6 +19,7 @@ const backendUrl = document.querySelector("#backend-url");
 const autoTranslate = document.querySelector("#auto-translate");
 const healthCheck = document.querySelector("#health-check");
 const provider = document.querySelector("#provider");
+const remoteProvider = document.querySelector("#remote-provider");
 const openaiApiKey = document.querySelector("#openai-api-key");
 const openaiModel = document.querySelector("#openai-model");
 const zaiApiKey = document.querySelector("#zai-api-key");
@@ -56,7 +57,13 @@ async function init() {
 
   try {
     const payload = await fetchConfig(settings.backendUrl);
-    provider.value = payload.provider ?? "openai";
+    if (payload.provider === "openai" || payload.provider === "zai") {
+      provider.value = "argos";
+      remoteProvider.value = payload.provider;
+    } else {
+      provider.value = payload.provider ?? "argos";
+      remoteProvider.value = "";
+    }
     openaiModel.value = payload.openaiModel ?? "gpt-5.4-mini";
     zaiModel.value = payload.zaiModel ?? "glm-4.6";
     zaiEndpoint.value = payload.zaiEndpoint ?? "general";
@@ -66,6 +73,7 @@ async function init() {
     zaiApiKey.placeholder = payload.hasZaiKey ? "Guardada en servidor local" : "Pega una API key";
   } catch {
     provider.value = "argos";
+    remoteProvider.value = "";
     openaiModel.value = "gpt-5.4-mini";
     zaiModel.value = "glm-4.6";
     zaiEndpoint.value = "general";
@@ -107,6 +115,7 @@ form?.addEventListener("submit", async (event) => {
 });
 
 provider?.addEventListener("change", syncProviderPanels);
+remoteProvider?.addEventListener("change", syncProviderPanels);
 
 healthCheck?.addEventListener("click", async () => {
   try {
@@ -146,7 +155,7 @@ async function saveConfig(baseUrl) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      provider: provider.value,
+      provider: remoteProvider.value || provider.value,
       openaiApiKey: openaiApiKey.value.trim(),
       openaiModel: openaiModel.value.trim(),
       zaiApiKey: zaiApiKey.value.trim(),
@@ -170,7 +179,7 @@ function setStatus(message) {
 }
 
 function syncProviderPanels() {
-  const activeProvider = provider.value;
+  const activeProvider = remoteProvider.value || provider.value;
 
   Object.entries(providerPanels).forEach(([name, panel]) => {
     panel?.classList.toggle("is-active", name === activeProvider);

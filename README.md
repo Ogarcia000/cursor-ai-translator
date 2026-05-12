@@ -1,6 +1,6 @@
 # Cursor AI Translator
 
-Extension de navegador que detecta texto seleccionado y muestra una traduccion junto al cursor. Incluye un backend local para usar OpenAI, Z.AI o traduccion offline con Argos Translate.
+Extension de navegador que detecta texto seleccionado y muestra una traduccion junto al cursor. Esta pensada para funcionar rapido con proveedores locales como Argos Translate u Ollama, y conserva soporte opcional para APIs remotas.
 
 ![Cursor AI Translator preview](assets/preview1.png)
 
@@ -8,7 +8,7 @@ Extension de navegador que detecta texto seleccionado y muestra una traduccion j
 
 - Burbuja flotante cerca del cursor cuando seleccionas texto.
 - Traduccion automatica configurable desde la pagina de opciones.
-- Configuracion de proveedor, modelo y API key desde la pagina de opciones.
+- Configuracion local sencilla desde la pagina de opciones.
 - Backend local en Node.js.
 - Endpoint de salud para verificar que el servidor este corriendo.
 
@@ -67,44 +67,15 @@ cursor-ai-translator/
 npm install
 ```
 
-2. Elige proveedor e inicia el servidor.
+2. Inicia el servidor local:
 
-### OpenAI
-
-```bash
-export AI_PROVIDER="openai"
-export OPENAI_API_KEY="tu_api_key"
 npm start
 ```
 
-### Z.AI
+Despues abre la pagina de opciones de la extension y elige una configuracion local:
 
-```bash
-export AI_PROVIDER="zai"
-export ZAI_API_KEY="tu_api_key"
-export ZAI_MODEL="glm-4.6"
-export ZAI_ENDPOINT="general"
-npm start
-```
-
-Si tu cuenta usa `GLM Coding Plan`, inicia con:
-
-```bash
-export AI_PROVIDER="zai"
-export ZAI_API_KEY="tu_api_key"
-export ZAI_MODEL="glm-4.7"
-export ZAI_ENDPOINT="coding"
-npm start
-```
-
-Despues del primer arranque, tambien puedes abrir la pagina de opciones de la extension y guardar manualmente:
-
-- proveedor activo
-- API key
-- modelo
-- endpoint de Z.AI
-
-La llave se conserva en `server-config.json` dentro del proyecto y no se guarda en `chrome.storage`.
+- `Argos local` para traduccion directa y ligera.
+- `Ollama local` si ya usas modelos locales en tu equipo.
 
 3. Carga la extension sin empaquetar:
 
@@ -130,19 +101,12 @@ Esta primera version funciona dentro del navegador. No captura seleccion de text
 
 ## Proveedores soportados
 
-- `openai`: usa `Responses API`.
-- `zai`: usa la API compatible con OpenAI de Z.AI mediante `chat/completions`.
 - `argos`: usa traduccion local offline con modelos descargados en tu maquina.
 - `ollama`: usa un modelo local servido por Ollama.
+- `openai`: soporte remoto opcional.
+- `zai`: soporte remoto opcional.
 
-Para Z.AI:
-
-- `ZAI_ENDPOINT="general"` usa `https://api.z.ai/api/paas/v4/`
-- `ZAI_ENDPOINT="coding"` usa `https://api.z.ai/api/coding/paas/v4/`
-
-El endpoint `coding` es el que Z.AI indica para cuentas con `GLM Coding Plan`.
-
-Si cambias de proveedor o de API key desde la pagina de opciones, no hace falta reiniciar el servidor.
+Las APIs remotas quedan en `Avanzado` porque normalmente introducen mas latencia que la configuracion local.
 
 El backend mantiene una cache corta de traducciones recientes para responder al instante cuando vuelves a seleccionar el mismo texto.
 
@@ -186,6 +150,15 @@ Luego, en la configuracion de la extension:
 - `Proveedor`: `Ollama local`
 - `Modelo Ollama`: `gemma3`
 - `URL local`: `http://127.0.0.1:11434/api`
+
+## APIs remotas opcionales
+
+OpenAI y Z.AI siguen disponibles desde `Avanzado` en la pantalla de opciones. Esa ruta se conserva para quien priorice compatibilidad o modelos remotos, pero no es la recomendacion principal del proyecto.
+
+Si se usa Z.AI:
+
+- `general` corresponde a la API comun.
+- `coding` corresponde al `GLM Coding Plan`.
 
 ## Preparar repo para GitHub
 

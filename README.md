@@ -19,8 +19,7 @@ cursor-ai-translator/
 ├── assets/
 │   ├── logo.png
 │   ├── preview1.png
-│   ├── preview2.png
-│   └── preview3.png
+│   └── preview2.png
 ├── extension/
 │   ├── background.js
 │   ├── content.css
@@ -54,10 +53,6 @@ cursor-ai-translator/
 ### Configuracion principal
 
 ![Settings overview](assets/preview2.png)
-
-### Guardado y controles visuales
-
-![Settings saved](assets/preview3.png)
 
 ## Arranque local
 

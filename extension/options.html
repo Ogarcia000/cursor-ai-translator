@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cursor AI Translator</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main class="settings">
+      <section class="settings__panel">
+        <header class="settings__header">
+          <h1>Cursor AI Translator</h1>
+          <p>Configura lo necesario y deja el resto listo con buenos valores por defecto.</p>
+        </header>
+
+        <form id="settings-form" class="settings__form">
+          <section class="subpanel">
+            <h2>Uso</h2>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>Idioma destino</span>
+                <input id="target-language" name="targetLanguage" type="text" autocomplete="off" placeholder="Spanish">
+              </label>
+
+              <label class="field">
+                <span>Idioma origen</span>
+                <input id="source-language" name="sourceLanguage" type="text" autocomplete="off" placeholder="auto-detect">
+              </label>
+            </div>
+
+            <label class="toggle">
+              <input id="auto-translate" name="autoTranslate" type="checkbox">
+              <span>Traducir automaticamente al seleccionar texto</span>
+            </label>
+          </section>
+
+          <section class="subpanel">
+            <div class="subpanel__heading">
+              <h2>Motor de traduccion</h2>
+              <p>Elige local para mayor rapidez o API para mayor flexibilidad.</p>
+            </div>
+
+            <label class="field">
+              <span>Proveedor</span>
+              <select id="provider" name="provider">
+                <option value="argos">Argos local</option>
+                <option value="ollama">Ollama local</option>
+                <option value="openai">OpenAI</option>
+                <option value="zai">Z.AI</option>
+              </select>
+            </label>
+
+            <div id="provider-argos" class="provider-panel">
+              <p class="helper">No requiere API key. Usa modelos instalados en tu equipo.</p>
+            </div>
+
+            <div id="provider-openai" class="provider-panel">
+              <div class="field-grid">
+                <label class="field">
+                  <span>OpenAI API key</span>
+                  <input id="openai-api-key" name="openaiApiKey" type="password" autocomplete="off" placeholder="Opcional si ya esta guardada">
+                </label>
+
+                <label class="field">
+                  <span>Modelo</span>
+                  <input id="openai-model" name="openaiModel" type="text" autocomplete="off" placeholder="gpt-5.4-mini">
+                </label>
+              </div>
+            </div>
+
+            <div id="provider-ollama" class="provider-panel">
+              <div class="field-grid">
+                <label class="field">
+                  <span>Modelo Ollama</span>
+                  <input id="ollama-model" name="ollamaModel" type="text" autocomplete="off" placeholder="gemma3">
+                </label>
+
+                <label class="field">
+                  <span>URL local</span>
+                  <input id="ollama-base-url" name="ollamaBaseUrl" type="url" autocomplete="off" placeholder="http://127.0.0.1:11434/api">
+                </label>
+              </div>
+              <p class="helper">Ollama debe estar instalado, corriendo y con el modelo ya descargado.</p>
+            </div>
+
+            <div id="provider-zai" class="provider-panel">
+              <div class="field-grid">
+                <label class="field">
+                  <span>Z.AI API key</span>
+                  <input id="zai-api-key" name="zaiApiKey" type="password" autocomplete="off" placeholder="Opcional si ya esta guardada">
+                </label>
+
+                <label class="field">
+                  <span>Modelo</span>
+                  <input id="zai-model" name="zaiModel" type="text" autocomplete="off" placeholder="glm-4.7">
+                </label>
+
+                <label class="field">
+                  <span>Plan</span>
+                  <select id="zai-endpoint" name="zaiEndpoint">
+                    <option value="general">API general</option>
+                    <option value="coding">GLM Coding Plan</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="subpanel">
+            <h2>Apariencia</h2>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>Tema</span>
+                <select id="bubble-theme" name="bubbleTheme">
+                  <option value="light">Claro</option>
+                  <option value="dark">Oscuro</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Color</span>
+                <input id="accent-color" name="accentColor" type="color" value="#0f766e">
+              </label>
+
+              <label class="field">
+                <span>Ancho</span>
+                <select id="bubble-width" name="bubbleWidth">
+                  <option value="320">Compacto</option>
+                  <option value="360">Normal</option>
+                  <option value="420">Amplio</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Texto</span>
+                <select id="font-size" name="fontSize">
+                  <option value="13">Pequeno</option>
+                  <option value="14">Normal</option>
+                  <option value="16">Grande</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Posicion</span>
+                <select id="bubble-placement" name="bubblePlacement">
+                  <option value="cursor">Junto al cursor</option>
+                  <option value="selection">Bajo la seleccion</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Cierre automatico</span>
+                <select id="auto-hide-ms" name="autoHideMs">
+                  <option value="0">Nunca</option>
+                  <option value="3500">3.5 s</option>
+                  <option value="6000">6 s</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <details class="advanced">
+            <summary>Avanzado</summary>
+            <div class="advanced__body">
+              <label class="field">
+                <span>Servidor local</span>
+                <input id="backend-url" name="backendUrl" type="url" autocomplete="off" placeholder="http://127.0.0.1:8787">
+              </label>
+            </div>
+          </details>
+
+          <div class="actions">
+            <button type="submit">Guardar</button>
+            <button id="health-check" type="button">Probar servidor</button>
+          </div>
+        </form>
+
+        <p id="status" class="status" role="status"></p>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

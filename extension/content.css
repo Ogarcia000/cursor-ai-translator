@@ -1,0 +1,153 @@
+.cat-bubble {
+  --cat-accent: #0f766e;
+  --cat-width: 360px;
+  --cat-font-size: 14px;
+  position: fixed;
+  z-index: 2147483647;
+  width: min(var(--cat-width), calc(100vw - 32px));
+  max-height: min(320px, calc(100vh - 32px));
+  overflow: hidden;
+  border: 1px solid rgba(24, 24, 27, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+  color: #18181b;
+  font: var(--cat-font-size)/1.45 Arial, Helvetica, sans-serif;
+}
+
+.cat-bubble[hidden] {
+  display: none;
+}
+
+.cat-bubble__header {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(24, 24, 27, 0.08);
+  background: color-mix(in srgb, var(--cat-accent) 10%, #ffffff);
+}
+
+.cat-bubble__identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cat-bubble__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--cat-accent);
+}
+
+.cat-bubble__header strong {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.cat-bubble__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cat-bubble__settings,
+.cat-bubble__close {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #3f3f46;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.cat-bubble__settings {
+  font-size: 15px;
+}
+
+.cat-bubble__settings:hover,
+.cat-bubble__close:hover {
+  background: color-mix(in srgb, var(--cat-accent) 14%, transparent);
+}
+
+.cat-bubble__body {
+  max-height: 260px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.cat-bubble__body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.cat-bubble__body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cat-accent) 56%, #9ca3af);
+  background-clip: padding-box;
+}
+
+.cat-bubble__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cat-bubble[data-mode="loading"] .cat-bubble__body {
+  color: #52525b;
+}
+
+.cat-bubble[data-mode="error"] {
+  border-color: rgba(185, 28, 28, 0.28);
+}
+
+.cat-bubble[data-mode="error"] .cat-bubble__header {
+  background: #fef2f2;
+}
+
+.cat-bubble[data-mode="error"] .cat-bubble__body {
+  color: #991b1b;
+}
+
+.cat-bubble[data-theme="dark"] {
+  border-color: rgba(228, 228, 231, 0.12);
+  background: #18181b;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36);
+  color: #f4f4f5;
+}
+
+.cat-bubble[data-theme="dark"] .cat-bubble__header {
+  border-bottom-color: rgba(244, 244, 245, 0.08);
+  background: color-mix(in srgb, var(--cat-accent) 18%, #18181b);
+}
+
+.cat-bubble[data-theme="dark"] .cat-bubble__close {
+  color: #e4e4e7;
+}
+
+.cat-bubble[data-theme="dark"] .cat-bubble__settings {
+  color: #e4e4e7;
+}
+
+.cat-bubble[data-theme="dark"][data-mode="loading"] .cat-bubble__body {
+  color: #d4d4d8;
+}
+
+.cat-bubble[data-theme="dark"][data-mode="error"] .cat-bubble__header {
+  background: #3f1d1d;
+}
+
+.cat-bubble[data-theme="dark"][data-mode="error"] .cat-bubble__body {
+  color: #fecaca;
+}

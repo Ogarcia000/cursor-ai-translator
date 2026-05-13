@@ -28,6 +28,9 @@ const zaiEndpoint = document.querySelector("#zai-endpoint");
 const ollamaModel = document.querySelector("#ollama-model");
 const ollamaBaseUrl = document.querySelector("#ollama-base-url");
 const ollamaPreset = document.querySelector("#ollama-preset");
+const mlxModel = document.querySelector("#mlx-model");
+const mlxPort = document.querySelector("#mlx-port");
+const mlxPreset = document.querySelector("#mlx-preset");
 const bubbleTheme = document.querySelector("#bubble-theme");
 const accentColor = document.querySelector("#accent-color");
 const bubbleWidth = document.querySelector("#bubble-width");
@@ -37,6 +40,7 @@ const autoHideMs = document.querySelector("#auto-hide-ms");
 const providerPanels = {
   argos: document.querySelector("#provider-argos"),
   ollama: document.querySelector("#provider-ollama"),
+  mlx: document.querySelector("#provider-mlx"),
   openai: document.querySelector("#provider-openai"),
   zai: document.querySelector("#provider-zai")
 };
@@ -71,6 +75,9 @@ async function init() {
     ollamaModel.value = payload.ollamaModel ?? "qwen2.5:0.5b";
     syncOllamaPreset();
     ollamaBaseUrl.value = payload.ollamaBaseUrl ?? "http://127.0.0.1:11434/api";
+    mlxModel.value = payload.mlxModel ?? "mlx-community/Qwen2.5-0.5B-Instruct-4bit";
+    mlxPort.value = payload.mlxPort ?? "11435";
+    syncMlxPreset();
     openaiApiKey.placeholder = payload.hasOpenAiKey ? "Guardada en servidor local" : "Pega una API key";
     zaiApiKey.placeholder = payload.hasZaiKey ? "Guardada en servidor local" : "Pega una API key";
   } catch {
@@ -82,6 +89,9 @@ async function init() {
     ollamaModel.value = "qwen2.5:0.5b";
     syncOllamaPreset();
     ollamaBaseUrl.value = "http://127.0.0.1:11434/api";
+    mlxModel.value = "mlx-community/Qwen2.5-0.5B-Instruct-4bit";
+    mlxPort.value = "11435";
+    syncMlxPreset();
   }
 
   syncProviderPanels();
@@ -125,6 +135,12 @@ ollamaPreset?.addEventListener("change", () => {
   }
 });
 ollamaModel?.addEventListener("input", syncOllamaPreset);
+mlxPreset?.addEventListener("change", () => {
+  if (mlxPreset.value !== "custom") {
+    mlxModel.value = mlxPreset.value;
+  }
+});
+mlxModel?.addEventListener("input", syncMlxPreset);
 
 healthCheck?.addEventListener("click", async () => {
   try {
@@ -171,7 +187,9 @@ async function saveConfig(baseUrl) {
       zaiModel: zaiModel.value.trim(),
       zaiEndpoint: zaiEndpoint.value,
       ollamaModel: ollamaModel.value.trim(),
-      ollamaBaseUrl: ollamaBaseUrl.value.trim()
+      ollamaBaseUrl: ollamaBaseUrl.value.trim(),
+      mlxModel: mlxModel.value.trim(),
+      mlxPort: mlxPort.value.trim()
     })
   });
   const payload = await response.json();
@@ -198,4 +216,9 @@ function syncProviderPanels() {
 function syncOllamaPreset() {
   const presetValues = Array.from(ollamaPreset.options).map((option) => option.value);
   ollamaPreset.value = presetValues.includes(ollamaModel.value) ? ollamaModel.value : "custom";
+}
+
+function syncMlxPreset() {
+  const presetValues = Array.from(mlxPreset.options).map((option) => option.value);
+  mlxPreset.value = presetValues.includes(mlxModel.value) ? mlxModel.value : "custom";
 }

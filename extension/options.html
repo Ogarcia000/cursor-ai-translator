@@ -47,6 +47,7 @@
               <select id="provider" name="provider">
                 <option value="argos">Argos local</option>
                 <option value="ollama">Ollama local</option>
+                <option value="mlx">MLX local - Mac</option>
               </select>
             </label>
 
@@ -78,6 +79,31 @@
                 </label>
               </div>
               <p class="helper">Para la sensacion de burbuja instantanea, empieza con `qwen2.5:0.5b` o `tinyllama`.</p>
+            </div>
+
+            <div id="provider-mlx" class="provider-panel">
+              <div class="field-grid">
+                <label class="field">
+                  <span>Preset MLX</span>
+                  <select id="mlx-preset" name="mlxPreset">
+                    <option value="mlx-community/Qwen2.5-0.5B-Instruct-4bit">Qwen 2.5 0.5B 4-bit</option>
+                    <option value="mlx-community/gemma-2-2b-it-4bit">Gemma 2 2B 4-bit</option>
+                    <option value="mlx-community/gemma-3-1b-it-4bit">Gemma 3 1B 4-bit</option>
+                    <option value="custom">Personalizado</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Modelo Hugging Face</span>
+                  <input id="mlx-model" name="mlxModel" type="text" autocomplete="off" placeholder="mlx-community/Qwen2.5-0.5B-Instruct-4bit">
+                </label>
+
+                <label class="field">
+                  <span>Puerto MLX</span>
+                  <input id="mlx-port" name="mlxPort" type="number" min="1024" max="65535" step="1" placeholder="11435">
+                </label>
+              </div>
+              <p class="helper">Solo Mac con Apple Silicon. El primer uso crea el entorno MLX y descarga el modelo desde Hugging Face.</p>
             </div>
 
           </section>

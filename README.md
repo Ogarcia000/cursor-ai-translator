@@ -98,6 +98,7 @@ Esta primera version funciona dentro del navegador. No captura seleccion de text
 
 - `argos`: usa traduccion local offline con modelos descargados en tu maquina.
 - `ollama`: usa un modelo local servido por Ollama.
+- `mlx`: usa MLX en Mac con Apple Silicon y descarga modelos desde Hugging Face.
 - `openai`: soporte remoto opcional.
 - `zai`: soporte remoto opcional.
 
@@ -156,6 +157,33 @@ ollama pull gemma2:2b
 ```
 
 Para la burbuja instantanea, empieza con `qwen2.5:0.5b` o `tinyllama`. Si quieres mejor balance entre calidad y velocidad, prueba `gemma:2b` o `gemma2:2b`.
+
+## MLX local para Mac
+
+En macOS con Apple Silicon puedes usar `MLX local - Mac` sin depender de Ollama. El primer request:
+
+- crea `.venv-mlx`
+- instala `mlx-lm`
+- arranca `mlx_lm.server`
+- descarga el modelo desde Hugging Face automaticamente
+
+Configuracion recomendada en la extension:
+
+- `Proveedor local`: `MLX local - Mac`
+- `Preset MLX`: `Qwen 2.5 0.5B 4-bit`
+- `Puerto MLX`: `11435`
+
+Presets incluidos:
+
+- `mlx-community/Qwen2.5-0.5B-Instruct-4bit`
+- `mlx-community/gemma-2-2b-it-4bit`
+- `mlx-community/gemma-3-1b-it-4bit`
+
+Si falta Python compatible, instala Python 3.10 a 3.13. En Mac con Homebrew:
+
+```bash
+brew install python@3.13
+```
 
 ## APIs remotas opcionales
 

@@ -129,11 +129,8 @@ function buildPrompt({ text, targetLanguage, sourceLanguage }) {
 }
 
 function buildFastTranslationPrompt({ text, targetLanguage, sourceLanguage }) {
-  return [
-    `Translate from ${sourceLanguage || "auto"} to ${targetLanguage}.`,
-    "Return only the translation. Keep line breaks.",
-    text
-  ].join("\n");
+  const source = sourceLanguage ? ` from ${sourceLanguage}` : "";
+  return `Translate${source} to ${targetLanguage}. Only the translation:\n${text}`;
 }
 
 function getProviderConfig(serverConfig) {
@@ -320,11 +317,11 @@ async function translateWithOllama(baseURL, model, promptData) {
         }
       ],
       stream: false,
-      keep_alive: "10m",
+      keep_alive: "30m",
       options: {
         temperature: 0,
-        num_ctx: 2048,
-        num_predict: 512
+        num_ctx: 512,
+        num_predict: 192
       }
     })
   });
@@ -335,6 +332,36 @@ async function translateWithOllama(baseURL, model, promptData) {
   }
 
   return payload.message?.content?.trim();
+}
+
+async function warmOllamaModel(baseURL, model) {
+  try {
+    await fetch(`${baseURL.replace(/\/$/, "")}/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "user",
+            content: "Reply ok."
+          }
+        ],
+        stream: false,
+        keep_alive: "30m",
+        options: {
+          temperature: 0,
+          num_ctx: 256,
+          num_predict: 2
+        }
+      })
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Ollama warm-up failed.";
+    console.warn(`Ollama warm-up skipped: ${message}`);
+  }
 }
 
 async function translateWithMLX(port, model, promptData) {
@@ -685,6 +712,9 @@ const server = http.createServer(async (request, response) => {
       const payload = await readJson(request);
       const serverConfig = await saveServerConfig(payload);
       const providerConfig = getProviderConfig(serverConfig);
+      if (providerConfig.provider === "ollama") {
+        warmOllamaModel(providerConfig.baseURL, providerConfig.model);
+      }
       sendJson(response, 200, {
         ok: true,
         provider: serverConfig.provider,
@@ -717,5 +747,8 @@ server.listen(PORT, "127.0.0.1", () => {
     console.log(`Provider: ${providerConfig.provider}`);
     console.log(`Model: ${providerConfig.model}`);
     console.log(`Endpoint: ${providerConfig.endpoint}`);
+    if (providerConfig.provider === "ollama") {
+      warmOllamaModel(providerConfig.baseURL, providerConfig.model);
+    }
   });
 });

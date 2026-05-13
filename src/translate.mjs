@@ -1,7 +1,8 @@
 import OpenAI from "openai";
-import { MAX_TEXT_LENGTH } from "./constants.mjs";
-import { loadServerConfig, getProviderConfig, normalizeText } from "./config.mjs";
+import { loadServerConfig, getProviderConfig } from "./config.mjs";
+import { translatePayloadSchema, formatZodError } from "./schemas.mjs";
 import { buildCacheKey, getCached, setCached } from "./cache.mjs";
+import { detectLanguage } from "./detect.mjs";
 import { translateWithArgos, streamTranslateWithArgos } from "./providers/argos.mjs";
 import { translateWithOllama, streamTranslateWithOllama } from "./providers/ollama.mjs";
 import { translateWithMLX, streamTranslateWithMLX } from "./providers/mlx.mjs";
@@ -56,20 +57,38 @@ function dispatchStream(providerConfig, params, signal) {
   }
 }
 
-export async function translateText(payload) {
-  const text = normalizeText(payload.text);
-  const targetLanguage = normalizeText(payload.targetLanguage) || "Spanish";
-  const sourceLanguage = normalizeText(payload.sourceLanguage);
-
-  if (!text) {
-    return { statusCode: 400, body: { error: "No text was provided." } };
+function parsePayload(payload) {
+  const result = translatePayloadSchema.safeParse(payload ?? {});
+  if (!result.success) {
+    return { error: { statusCode: 400, message: formatZodError(result.error) } };
   }
 
-  if (text.length > MAX_TEXT_LENGTH) {
-    return {
-      statusCode: 400,
-      body: { error: `The selection is too long. Limit: ${MAX_TEXT_LENGTH} characters.` }
-    };
+  const text = result.data.text.trim();
+  if (!text) {
+    return { error: { statusCode: 400, message: "No text was provided." } };
+  }
+
+  const targetLanguage = result.data.targetLanguage.trim() || "Spanish";
+  const sourceLanguageInput = result.data.sourceLanguage.trim();
+  let detected = null;
+
+  if (!sourceLanguageInput) {
+    detected = detectLanguage(text);
+  }
+
+  const sourceLanguage = sourceLanguageInput || detected?.name || "";
+
+  return {
+    params: { text, targetLanguage, sourceLanguage },
+    detectedLanguage: sourceLanguageInput ? null : detected?.name ?? null,
+    detectedIso1: sourceLanguageInput ? null : detected?.iso1 ?? null
+  };
+}
+
+export async function translateText(payload) {
+  const prepared = parsePayload(payload);
+  if (prepared.error) {
+    return { statusCode: prepared.error.statusCode, body: { error: prepared.error.message } };
   }
 
   const serverConfig = await loadServerConfig();
@@ -86,8 +105,7 @@ export async function translateText(payload) {
     };
   }
 
-  const params = { text, targetLanguage, sourceLanguage };
-  const cacheKey = buildCacheKey(providerConfig, params);
+  const cacheKey = buildCacheKey(providerConfig, prepared.params);
   const cachedTranslation = getCached(cacheKey);
 
   if (cachedTranslation) {
@@ -97,12 +115,14 @@ export async function translateText(payload) {
         translation: cachedTranslation,
         model: providerConfig.model,
         provider: providerConfig.provider,
+        detectedLanguage: prepared.detectedLanguage,
+        detectedIso1: prepared.detectedIso1,
         cached: true
       }
     };
   }
 
-  const translation = await dispatch(providerConfig, params);
+  const translation = await dispatch(providerConfig, prepared.params);
 
   if (!translation) {
     return {
@@ -119,30 +139,15 @@ export async function translateText(payload) {
       translation,
       model: providerConfig.model,
       provider: providerConfig.provider,
+      detectedLanguage: prepared.detectedLanguage,
+      detectedIso1: prepared.detectedIso1,
       cached: false
     }
   };
 }
 
-function prepareStreamRequest(payload) {
-  const text = normalizeText(payload.text);
-  const targetLanguage = normalizeText(payload.targetLanguage) || "Spanish";
-  const sourceLanguage = normalizeText(payload.sourceLanguage);
-
-  if (!text) {
-    return { error: { statusCode: 400, message: "No text was provided." } };
-  }
-  if (text.length > MAX_TEXT_LENGTH) {
-    return {
-      error: { statusCode: 400, message: `The selection is too long. Limit: ${MAX_TEXT_LENGTH} characters.` }
-    };
-  }
-
-  return { params: { text, targetLanguage, sourceLanguage } };
-}
-
 export async function* translateTextStream(payload, signal) {
-  const prepared = prepareStreamRequest(payload);
+  const prepared = parsePayload(payload);
   if (prepared.error) {
     yield { type: "error", error: prepared.error.message, statusCode: prepared.error.statusCode };
     return;
@@ -171,6 +176,8 @@ export async function* translateTextStream(payload, signal) {
       type: "done",
       provider: providerConfig.provider,
       model: providerConfig.model,
+      detectedLanguage: prepared.detectedLanguage,
+      detectedIso1: prepared.detectedIso1,
       cached: true
     };
     return;
@@ -207,6 +214,8 @@ export async function* translateTextStream(payload, signal) {
     type: "done",
     provider: providerConfig.provider,
     model: providerConfig.model,
+    detectedLanguage: prepared.detectedLanguage,
+    detectedIso1: prepared.detectedIso1,
     cached: false
   };
 }

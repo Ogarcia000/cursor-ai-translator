@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cursor AI Translator</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup">
+      <header class="popup__header">
+        <span class="popup__dot"></span>
+        <strong>AI Translate</strong>
+      </header>
+
+      <label class="popup__toggle">
+        <input id="popup-auto" type="checkbox">
+        <span>Traducir al seleccionar</span>
+      </label>
+
+      <label class="popup__field">
+        <span>Idioma destino</span>
+        <select id="popup-target"></select>
+      </label>
+
+      <p id="popup-status" class="popup__status" role="status">...</p>
+
+      <div class="popup__actions">
+        <button id="popup-test" type="button">Probar servidor</button>
+        <button id="popup-options" type="button" class="popup__primary">Abrir opciones</button>
+      </div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

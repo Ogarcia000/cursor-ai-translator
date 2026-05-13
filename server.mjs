@@ -1,7 +1,8 @@
 import http from "node:http";
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, chmod } from "node:fs/promises";
 import { spawn, spawnSync } from "node:child_process";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI from "openai";
@@ -9,6 +10,14 @@ import OpenAI from "openai";
 const PORT = Number.parseInt(process.env.PORT ?? "8787", 10);
 const APP_DIR = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = path.join(APP_DIR, "server-config.json");
+const AUTH_PATH = path.join(APP_DIR, "server-auth.json");
+const ALLOWED_LOOPBACK_HOSTS = new Set([
+  `127.0.0.1:${PORT}`,
+  `localhost:${PORT}`,
+  `[::1]:${PORT}`
+]);
+const ALLOWED_OLLAMA_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+let cachedAuthToken = null;
 const MLX_VENV_DIR = path.join(APP_DIR, ".venv-mlx");
 const MLX_VENV_PYTHON = path.join(MLX_VENV_DIR, "bin", "python3");
 const MLX_MODELS_DIR = path.join(APP_DIR, ".mlx-models");
@@ -37,16 +46,93 @@ let mlxServer = null;
 let mlxServerModel = "";
 let mlxServerPort = 0;
 let mlxStartPromise = null;
-const JSON_HEADERS = {
-  "Content-Type": "application/json; charset=utf-8",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
-};
+function buildCorsHeaders(request) {
+  const origin = request.headers.origin ?? "";
+  const allowOrigin = origin.startsWith("chrome-extension://") ? origin : "null";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
+  };
+}
 
-function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, JSON_HEADERS);
+function jsonHeaders(request) {
+  return {
+    "Content-Type": "application/json; charset=utf-8",
+    ...buildCorsHeaders(request)
+  };
+}
+
+function sendJson(request, response, statusCode, payload) {
+  response.writeHead(statusCode, jsonHeaders(request));
   response.end(JSON.stringify(payload));
+}
+
+function isAllowedHost(request) {
+  const host = (request.headers.host ?? "").toLowerCase();
+  return ALLOWED_LOOPBACK_HOSTS.has(host);
+}
+
+function isAllowedOrigin(request) {
+  const origin = request.headers.origin;
+  if (!origin) {
+    return true;
+  }
+  return origin.startsWith("chrome-extension://");
+}
+
+async function loadOrCreateAuthToken() {
+  if (cachedAuthToken) {
+    return cachedAuthToken;
+  }
+
+  if (existsSync(AUTH_PATH)) {
+    try {
+      const raw = await readFile(AUTH_PATH, "utf8");
+      const parsed = JSON.parse(raw);
+      if (typeof parsed.token === "string" && parsed.token.length >= 32) {
+        cachedAuthToken = parsed.token;
+        return cachedAuthToken;
+      }
+    } catch {
+      // fall through to regenerate
+    }
+  }
+
+  const token = randomBytes(24).toString("hex");
+  await writeFile(AUTH_PATH, `${JSON.stringify({ token }, null, 2)}\n`, "utf8");
+
+  try {
+    await chmod(AUTH_PATH, 0o600);
+  } catch {
+    // best-effort on platforms without POSIX perms
+  }
+
+  cachedAuthToken = token;
+  console.log("");
+  console.log("Pairing token generated. Paste it in the extension Options page:");
+  console.log(`  ${token}`);
+  console.log(`Stored at ${AUTH_PATH}. Delete this file to rotate.`);
+  console.log("");
+  return token;
+}
+
+async function isAuthorized(request) {
+  const header = request.headers.authorization ?? "";
+  const match = /^Bearer\s+(.+)$/.exec(header);
+  if (!match) {
+    return false;
+  }
+
+  const provided = match[1].trim();
+  const expected = await loadOrCreateAuthToken();
+
+  if (provided.length !== expected.length) {
+    return false;
+  }
+
+  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
 async function readJson(request) {
@@ -83,7 +169,47 @@ async function loadServerConfig() {
   }
 }
 
+function validateConfigInput(payload) {
+  const argosPythonPath = normalizeText(payload.argosPythonPath);
+  if (argosPythonPath) {
+    const resolved = path.resolve(APP_DIR, argosPythonPath);
+    const inProject = resolved === APP_DIR || resolved.startsWith(APP_DIR + path.sep);
+    if (!inProject) {
+      throw new Error("argosPythonPath must resolve inside the project directory.");
+    }
+  }
+
+  const ollamaBaseUrl = normalizeText(payload.ollamaBaseUrl);
+  if (ollamaBaseUrl) {
+    let parsed;
+    try {
+      parsed = new URL(ollamaBaseUrl);
+    } catch {
+      throw new Error("ollamaBaseUrl is not a valid URL.");
+    }
+    if (!ALLOWED_OLLAMA_HOSTS.has(parsed.hostname.toLowerCase())) {
+      throw new Error("ollamaBaseUrl must point to a loopback host.");
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("ollamaBaseUrl must use http or https.");
+    }
+  }
+
+  if (payload.mlxPort !== undefined && payload.mlxPort !== "") {
+    const port = Number.parseInt(payload.mlxPort, 10);
+    if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+      throw new Error("mlxPort must be an integer between 1024 and 65535.");
+    }
+  }
+
+  const provider = normalizeText(payload.provider).toLowerCase();
+  if (provider && !["argos", "ollama", "mlx", "openai", "zai"].includes(provider)) {
+    throw new Error("provider is not supported.");
+  }
+}
+
 async function saveServerConfig(payload) {
+  validateConfigInput(payload);
   const currentConfig = await loadServerConfig();
   const nextConfig = {
     ...currentConfig,
@@ -666,31 +792,45 @@ async function translateWithArgos(pythonPath, promptData) {
   });
 }
 
+const PUBLIC_ENDPOINTS = new Set(["/health"]);
+
 const server = http.createServer(async (request, response) => {
   try {
+    if (!isAllowedHost(request)) {
+      response.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "Host not allowed." }));
+      return;
+    }
+
+    if (!isAllowedOrigin(request)) {
+      response.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "Origin not allowed." }));
+      return;
+    }
+
     if (request.method === "OPTIONS") {
-      response.writeHead(204, JSON_HEADERS);
+      response.writeHead(204, buildCorsHeaders(request));
       response.end();
       return;
     }
 
-    if (request.method === "GET" && request.url === "/health") {
-      const serverConfig = await loadServerConfig();
-      const providerConfig = getProviderConfig(serverConfig);
-      sendJson(response, 200, {
-        ok: true,
-        provider: providerConfig.provider,
-        model: providerConfig.model,
-        endpoint: providerConfig.endpoint,
-        hasApiKey: Boolean(providerConfig.apiKey)
+    const requiresAuth = !PUBLIC_ENDPOINTS.has(request.url ?? "");
+    if (requiresAuth && !(await isAuthorized(request))) {
+      sendJson(request, response, 401, {
+        error: "Missing or invalid pairing token. Paste the token from the server console into the extension Options page."
       });
+      return;
+    }
+
+    if (request.method === "GET" && request.url === "/health") {
+      sendJson(request, response, 200, { ok: true });
       return;
     }
 
     if (request.method === "GET" && request.url === "/config") {
       const serverConfig = await loadServerConfig();
       const providerConfig = getProviderConfig(serverConfig);
-      sendJson(response, 200, {
+      sendJson(request, response, 200, {
         provider: serverConfig.provider,
         openaiModel: serverConfig.openaiModel,
         zaiModel: serverConfig.zaiModel,
@@ -715,7 +855,7 @@ const server = http.createServer(async (request, response) => {
       if (providerConfig.provider === "ollama") {
         warmOllamaModel(providerConfig.baseURL, providerConfig.model);
       }
-      sendJson(response, 200, {
+      sendJson(request, response, 200, {
         ok: true,
         provider: serverConfig.provider,
         activeModel: providerConfig.model,
@@ -729,26 +869,38 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "POST" && request.url === "/translate") {
       const payload = await readJson(request);
       const result = await translateText(payload);
-      sendJson(response, result.statusCode, result.body);
+      sendJson(request, response, result.statusCode, result.body);
       return;
     }
 
-    sendJson(response, 404, { error: "Not found." });
+    sendJson(request, response, 404, { error: "Not found." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected server error.";
-    sendJson(response, 500, { error: message });
+    sendJson(request, response, 500, { error: message });
   }
 });
 
-server.listen(PORT, "127.0.0.1", () => {
+server.listen(PORT, "127.0.0.1", async () => {
   console.log(`Cursor AI Translator server listening on http://127.0.0.1:${PORT}`);
-  loadServerConfig().then((serverConfig) => {
-    const providerConfig = getProviderConfig(serverConfig);
-    console.log(`Provider: ${providerConfig.provider}`);
-    console.log(`Model: ${providerConfig.model}`);
-    console.log(`Endpoint: ${providerConfig.endpoint}`);
-    if (providerConfig.provider === "ollama") {
-      warmOllamaModel(providerConfig.baseURL, providerConfig.model);
-    }
-  });
+  await loadOrCreateAuthToken();
+  const serverConfig = await loadServerConfig();
+  const providerConfig = getProviderConfig(serverConfig);
+  console.log(`Provider: ${providerConfig.provider}`);
+  console.log(`Model: ${providerConfig.model}`);
+  console.log(`Endpoint: ${providerConfig.endpoint}`);
+  if (providerConfig.provider === "ollama") {
+    warmOllamaModel(providerConfig.baseURL, providerConfig.model);
+  }
 });
+
+function shutdown() {
+  stopMLXServer();
+  if (argosWorker && !argosWorker.killed) {
+    argosWorker.kill("SIGTERM");
+  }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 2000).unref();
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

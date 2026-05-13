@@ -64,8 +64,18 @@ npm install
 
 2. Inicia el servidor local:
 
+```bash
 npm start
 ```
+
+La primera vez, el servidor genera un **token de pareo** y lo imprime en consola:
+
+```text
+Pairing token generated. Paste it in the extension Options page:
+  3f1a...c9e2
+```
+
+Queda guardado en `server-auth.json` (no commitear). Para rotarlo, borra ese archivo y reinicia.
 
 Despues abre la pagina de opciones de la extension y elige una configuracion local:
 
@@ -86,9 +96,20 @@ cursor-ai-translator/extension
 
 4. Abre la pagina de opciones de la extension y confirma:
 
-- `Idioma destino`: se detecta desde el idioma del navegador
-- `Servidor local`: `http://127.0.0.1:8787`
-- `Traducir automaticamente`: activo
+- `Token de pareo`: pega el valor impreso por el servidor (solo la primera vez).
+- `Idioma destino`: se detecta desde el idioma del navegador.
+- `Servidor local`: `http://127.0.0.1:8787`.
+- `Traducir automaticamente`: activo.
+
+## Seguridad
+
+El servidor local solo acepta peticiones que cumplan **las tres**:
+
+- `Host` de loopback (`127.0.0.1:PORT` o `localhost:PORT`) — bloquea DNS rebinding.
+- `Origin` ausente o `chrome-extension://...` — bloquea sitios web.
+- Cabecera `Authorization: Bearer <token>` valida en `/config` y `/translate`.
+
+Ademas, los campos `argosPythonPath` y `ollamaBaseUrl` se restringen al directorio del proyecto y a hosts de loopback, evitando que una configuracion maliciosa lance ejecutables o haga SSRF.
 
 ## Alcance actual
 

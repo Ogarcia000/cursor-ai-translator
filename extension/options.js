@@ -60,6 +60,7 @@ const bubbleWidth = document.querySelector("#bubble-width");
 const fontSize = document.querySelector("#font-size");
 const bubblePlacement = document.querySelector("#bubble-placement");
 const autoHideMs = document.querySelector("#auto-hide-ms");
+const pairingToken = document.querySelector("#pairing-token");
 const providerPanels = {
   argos: document.querySelector("#provider-argos"),
   ollama: document.querySelector("#provider-ollama"),
@@ -69,6 +70,15 @@ const providerPanels = {
 };
 
 init();
+
+async function getStoredPairingToken() {
+  const { pairingToken: stored = "" } = await chrome.storage.local.get({ pairingToken: "" });
+  return stored.trim();
+}
+
+async function setStoredPairingToken(value) {
+  await chrome.storage.local.set({ pairingToken: value.trim() });
+}
 
 async function init() {
   populateLanguageSelects();
@@ -87,6 +97,9 @@ async function init() {
   fontSize.value = settings.fontSize;
   bubblePlacement.value = settings.bubblePlacement;
   autoHideMs.value = settings.autoHideMs;
+
+  const storedToken = await getStoredPairingToken();
+  pairingToken.placeholder = storedToken ? "Token guardado (sobrescribe para cambiar)" : "Pega el token de la consola del servidor";
 
   try {
     const payload = await fetchConfig(settings.backendUrl);
@@ -143,6 +156,13 @@ form?.addEventListener("submit", async (event) => {
     autoHideMs: autoHideMs.value
   });
 
+  const pastedToken = pairingToken.value.trim();
+  if (pastedToken) {
+    await setStoredPairingToken(pastedToken);
+    pairingToken.value = "";
+    pairingToken.placeholder = "Token guardado (sobrescribe para cambiar)";
+  }
+
   try {
     const payload = await saveConfig(resolvedBackendUrl);
     openaiApiKey.value = "";
@@ -188,10 +208,24 @@ healthCheck?.addEventListener("click", async () => {
   }
 });
 
+async function authHeaders(extra = {}) {
+  const stored = await getStoredPairingToken();
+  const pasted = pairingToken.value.trim();
+  const token = pasted || stored;
+  if (!token) {
+    return extra;
+  }
+  return { ...extra, Authorization: `Bearer ${token}` };
+}
+
 async function fetchConfig(baseUrl) {
   const url = `${(baseUrl || DEFAULT_SETTINGS.backendUrl).replace(/\/$/, "")}/config`;
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: await authHeaders() });
   const payload = await response.json();
+
+  if (response.status === 401) {
+    throw new Error("Token de pareo invalido o ausente. Pegalo en el campo 'Token de pareo'.");
+  }
 
   if (!response.ok) {
     throw new Error(payload.error || "No se pudo leer la configuracion del servidor.");
@@ -204,9 +238,7 @@ async function saveConfig(baseUrl) {
   const url = `${(baseUrl || DEFAULT_SETTINGS.backendUrl).replace(/\/$/, "")}/config`;
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: await authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({
       provider: remoteProvider.value || provider.value,
       openaiApiKey: openaiApiKey.value.trim(),
@@ -221,6 +253,10 @@ async function saveConfig(baseUrl) {
     })
   });
   const payload = await response.json();
+
+  if (response.status === 401) {
+    throw new Error("Token de pareo invalido o ausente. Pegalo en el campo 'Token de pareo'.");
+  }
 
   if (!response.ok) {
     throw new Error(payload.error || "No se pudo guardar la configuracion del servidor.");

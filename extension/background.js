@@ -35,6 +35,11 @@ async function getSettings() {
   };
 }
 
+async function getPairingToken() {
+  const { pairingToken = "" } = await chrome.storage.local.get({ pairingToken: "" });
+  return pairingToken.trim();
+}
+
 function getBrowserTargetLanguage() {
   const browserLanguage = chrome.i18n?.getUILanguage?.() || "en";
   const languageCode = browserLanguage.toLowerCase().split("-")[0];
@@ -52,12 +57,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
 
-  getSettings()
-    .then(async (settings) => {
+  Promise.all([getSettings(), getPairingToken()])
+    .then(async ([settings, token]) => {
+      if (!token) {
+        throw new Error("Falta el token de pareo. Abre Opciones y pegalo desde la consola del servidor.");
+      }
+
       const response = await fetch(`${settings.backendUrl.replace(/\/$/, "")}/translate`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           text: message.text,
@@ -67,6 +77,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       });
 
       const payload = await response.json();
+
+      if (response.status === 401) {
+        throw new Error("Token de pareo invalido. Revisa Opciones.");
+      }
 
       if (!response.ok) {
         throw new Error(payload.error || "Translation failed.");

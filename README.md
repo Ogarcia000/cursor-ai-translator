@@ -86,7 +86,7 @@ cursor-ai-translator/extension
 
 4. Abre la pagina de opciones de la extension y confirma:
 
-- `Idioma destino`: por defecto `Spanish`
+- `Idioma destino`: se detecta desde el idioma del navegador
 - `Servidor local`: `http://127.0.0.1:8787`
 - `Traducir automaticamente`: activo
 

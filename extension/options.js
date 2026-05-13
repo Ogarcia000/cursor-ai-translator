@@ -1,6 +1,6 @@
 const DEFAULT_SETTINGS = {
   backendUrl: "http://127.0.0.1:8787",
-  targetLanguage: "Spanish",
+  targetLanguage: "",
   sourceLanguage: "",
   autoTranslate: true,
   bubbleTheme: "light",
@@ -10,6 +10,29 @@ const DEFAULT_SETTINGS = {
   bubblePlacement: "cursor",
   autoHideMs: "0"
 };
+
+const COMMON_LANGUAGES = [
+  { code: "", label: "Auto detectar", value: "" },
+  { code: "en", label: "English", value: "English" },
+  { code: "es", label: "Español", value: "Spanish" },
+  { code: "fr", label: "Français", value: "French" },
+  { code: "de", label: "Deutsch", value: "German" },
+  { code: "it", label: "Italiano", value: "Italian" },
+  { code: "pt", label: "Português", value: "Portuguese" },
+  { code: "zh", label: "中文", value: "Chinese" },
+  { code: "ja", label: "日本語", value: "Japanese" },
+  { code: "ko", label: "한국어", value: "Korean" },
+  { code: "ar", label: "العربية", value: "Arabic" },
+  { code: "hi", label: "हिन्दी", value: "Hindi" },
+  { code: "ru", label: "Русский", value: "Russian" },
+  { code: "nl", label: "Nederlands", value: "Dutch" },
+  { code: "pl", label: "Polski", value: "Polish" },
+  { code: "tr", label: "Türkçe", value: "Turkish" },
+  { code: "vi", label: "Tiếng Việt", value: "Vietnamese" },
+  { code: "id", label: "Bahasa Indonesia", value: "Indonesian" },
+  { code: "th", label: "ไทย", value: "Thai" },
+  { code: "uk", label: "Українська", value: "Ukrainian" }
+];
 
 const form = document.querySelector("#settings-form");
 const status = document.querySelector("#status");
@@ -48,9 +71,14 @@ const providerPanels = {
 init();
 
 async function init() {
-  const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-  targetLanguage.value = settings.targetLanguage;
-  sourceLanguage.value = settings.sourceLanguage;
+  populateLanguageSelects();
+  const browserTargetLanguage = getBrowserTargetLanguage();
+  const settings = await chrome.storage.sync.get({
+    ...DEFAULT_SETTINGS,
+    targetLanguage: browserTargetLanguage
+  });
+  setSelectValue(targetLanguage, settings.targetLanguage || browserTargetLanguage);
+  setSelectValue(sourceLanguage, settings.sourceLanguage);
   backendUrl.value = settings.backendUrl;
   autoTranslate.checked = settings.autoTranslate;
   bubbleTheme.value = settings.bubbleTheme;
@@ -103,8 +131,8 @@ form?.addEventListener("submit", async (event) => {
   const resolvedBackendUrl = backendUrl.value.trim() || DEFAULT_SETTINGS.backendUrl;
 
   await chrome.storage.sync.set({
-    targetLanguage: targetLanguage.value.trim() || DEFAULT_SETTINGS.targetLanguage,
-    sourceLanguage: sourceLanguage.value.trim(),
+    targetLanguage: targetLanguage.value || getBrowserTargetLanguage(),
+    sourceLanguage: sourceLanguage.value,
     backendUrl: resolvedBackendUrl,
     autoTranslate: autoTranslate.checked,
     bubbleTheme: bubbleTheme.value,
@@ -203,6 +231,39 @@ async function saveConfig(baseUrl) {
 
 function setStatus(message) {
   status.textContent = message;
+}
+
+function populateLanguageSelects() {
+  targetLanguage.replaceChildren(...COMMON_LANGUAGES
+    .filter((language) => language.value)
+    .map(createLanguageOption));
+  sourceLanguage.replaceChildren(...COMMON_LANGUAGES.map(createLanguageOption));
+}
+
+function createLanguageOption(language) {
+  const option = document.createElement("option");
+  option.value = language.value;
+  option.textContent = language.label;
+  return option;
+}
+
+function getBrowserTargetLanguage() {
+  const browserLanguage = chrome.i18n?.getUILanguage?.() || navigator.language || "en";
+  const languageCode = browserLanguage.toLowerCase().split("-")[0];
+  return COMMON_LANGUAGES.find((language) => language.code === languageCode && language.value)?.value ?? "English";
+}
+
+function setSelectValue(select, value) {
+  const hasValue = Array.from(select.options).some((option) => option.value === value);
+
+  if (!hasValue && value) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  }
+
+  select.value = value;
 }
 
 function syncProviderPanels() {

@@ -1,12 +1,44 @@
 const DEFAULT_SETTINGS = {
   backendUrl: "http://127.0.0.1:8787",
-  targetLanguage: "Spanish",
+  targetLanguage: "",
   sourceLanguage: "",
   autoTranslate: true
 };
 
+const LANGUAGE_MAP = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  ar: "Arabic",
+  hi: "Hindi",
+  ru: "Russian",
+  nl: "Dutch",
+  pl: "Polish",
+  tr: "Turkish",
+  vi: "Vietnamese",
+  id: "Indonesian",
+  th: "Thai",
+  uk: "Ukrainian"
+};
+
 async function getSettings() {
-  return chrome.storage.sync.get(DEFAULT_SETTINGS);
+  const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+  return {
+    ...settings,
+    targetLanguage: settings.targetLanguage || getBrowserTargetLanguage()
+  };
+}
+
+function getBrowserTargetLanguage() {
+  const browserLanguage = chrome.i18n?.getUILanguage?.() || "en";
+  const languageCode = browserLanguage.toLowerCase().split("-")[0];
+  return LANGUAGE_MAP[languageCode] ?? "English";
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

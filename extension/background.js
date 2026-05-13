@@ -40,7 +40,6 @@ async function getPairingToken() {
   return pairingToken.trim();
 }
 
-let inflightTranslateController = null;
 const TRANSLATE_TIMEOUT_MS = 25_000;
 
 function getBrowserTargetLanguage() {
@@ -75,25 +74,39 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({ ok: true });
     return false;
   }
+  return false;
+});
 
-  if (message?.type !== "translate-selection") {
-    return false;
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "translate") {
+    return;
   }
 
-  if (inflightTranslateController) {
-    inflightTranslateController.abort();
-  }
-  const controller = new AbortController();
-  inflightTranslateController = controller;
-  const timeoutId = setTimeout(() => controller.abort(), TRANSLATE_TIMEOUT_MS);
+  let controller = null;
+  let timeoutId = null;
 
-  Promise.all([getSettings(), getPairingToken()])
-    .then(async ([settings, token]) => {
+  port.onMessage.addListener(async (message) => {
+    if (message?.type !== "translate-selection") {
+      return;
+    }
+
+    if (controller) {
+      controller.abort();
+    }
+    controller = new AbortController();
+    timeoutId = setTimeout(() => controller?.abort(), TRANSLATE_TIMEOUT_MS);
+
+    try {
+      const [settings, token] = await Promise.all([getSettings(), getPairingToken()]);
       if (!token) {
-        throw new Error(chrome.i18n.getMessage("errorTokenMissing") || "Pairing token missing.");
+        port.postMessage({
+          type: "error",
+          error: chrome.i18n.getMessage("errorTokenMissing") || "Pairing token missing."
+        });
+        return;
       }
 
-      const response = await fetch(`${settings.backendUrl.replace(/\/$/, "")}/translate`, {
+      const response = await fetch(`${settings.backendUrl.replace(/\/$/, "")}/translate/stream`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -107,38 +120,59 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         signal: controller.signal
       });
 
-      const payload = await response.json();
-
       if (response.status === 401) {
-        throw new Error(chrome.i18n.getMessage("errorTokenInvalid") || "Pairing token invalid.");
-      }
-
-      if (!response.ok) {
-        throw new Error(payload.error || "Translation failed.");
-      }
-
-      sendResponse({ ok: true, ...payload });
-    })
-    .catch((error) => {
-      if (error?.name === "AbortError") {
-        sendResponse({
-          ok: false,
-          error: chrome.i18n.getMessage("bubbleCanceledByNewSelection") || "Cancelled by a new selection.",
-          aborted: true
+        port.postMessage({
+          type: "error",
+          error: chrome.i18n.getMessage("errorTokenInvalid") || "Pairing token invalid."
         });
         return;
       }
-      sendResponse({
-        ok: false,
+
+      if (!response.ok || !response.body) {
+        let errorBody;
+        try { errorBody = await response.json(); } catch { errorBody = {}; }
+        port.postMessage({ type: "error", error: errorBody.error || `HTTP ${response.status}` });
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let nlIdx;
+        while ((nlIdx = buffer.indexOf("\n")) >= 0) {
+          const line = buffer.slice(0, nlIdx).trim();
+          buffer = buffer.slice(nlIdx + 1);
+          if (!line) continue;
+          try {
+            const event = JSON.parse(line);
+            port.postMessage(event);
+          } catch {
+            // ignore malformed line
+          }
+        }
+      }
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        port.postMessage({ type: "aborted" });
+        return;
+      }
+      port.postMessage({
+        type: "error",
         error: error instanceof Error ? error.message : "Translation failed."
       });
-    })
-    .finally(() => {
-      clearTimeout(timeoutId);
-      if (inflightTranslateController === controller) {
-        inflightTranslateController = null;
-      }
-    });
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  });
 
-  return true;
+  port.onDisconnect.addListener(() => {
+    controller?.abort();
+    if (timeoutId) clearTimeout(timeoutId);
+  });
 });

@@ -3,11 +3,72 @@ const STATE = {
   lastSelection: "",
   debounceId: null,
   hideTimer: null,
-  pointer: { x: 24, y: 24 }
+  pointer: { x: 24, y: 24 },
+  port: null,
+  streamBuffer: "",
+  currentSettings: null
 };
 
 function t(key, fallback) {
   return chrome.i18n?.getMessage?.(key) || fallback;
+}
+
+function ensureTranslatePort() {
+  if (STATE.port) {
+    return STATE.port;
+  }
+
+  const port = chrome.runtime.connect({ name: "translate" });
+  STATE.port = port;
+
+  port.onMessage.addListener((event) => {
+    const settings = STATE.currentSettings ?? {};
+
+    if (event?.type === "chunk") {
+      STATE.streamBuffer += event.text;
+      const bubble = STATE.bubble ?? createBubble();
+      applyBubbleSettings(bubble, settings);
+      bubble.dataset.mode = "ready";
+      const body = bubble.querySelector(".cat-bubble__body");
+      if (body) body.textContent = STATE.streamBuffer;
+      const copy = bubble.querySelector(".cat-bubble__copy");
+      if (copy) copy.hidden = false;
+      bubble.hidden = false;
+      positionBubble(bubble, settings);
+      return;
+    }
+
+    if (event?.type === "done") {
+      const bubble = STATE.bubble;
+      if (bubble) {
+        const providerChip = bubble.querySelector(".cat-bubble__provider");
+        if (providerChip && event.provider) {
+          providerChip.textContent = event.cached ? `${event.provider} · cache` : event.provider;
+          providerChip.hidden = false;
+        }
+      }
+      STATE.streamBuffer = "";
+      scheduleAutoHide(settings);
+      return;
+    }
+
+    if (event?.type === "aborted") {
+      STATE.streamBuffer = "";
+      return;
+    }
+
+    if (event?.type === "error") {
+      STATE.streamBuffer = "";
+      showBubble(event.error || t("bubbleTranslationFailed", "Could not translate."), "error", settings);
+    }
+  });
+
+  port.onDisconnect.addListener(() => {
+    STATE.port = null;
+    STATE.streamBuffer = "";
+  });
+
+  return port;
 }
 
 document.addEventListener("pointermove", (event) => {
@@ -70,34 +131,16 @@ async function handleSelection() {
   }
 
   STATE.lastSelection = selectedText;
+  STATE.currentSettings = settings;
+  STATE.streamBuffer = "";
   showBubble(t("bubbleTranslating", "Translating..."), "loading", settings);
 
-  chrome.runtime.sendMessage(
-    {
-      type: "translate-selection",
-      text: selectedText
-    },
-    (response) => {
-      if (chrome.runtime.lastError) {
-        showBubble(chrome.runtime.lastError.message, "error", settings);
-        return;
-      }
-
-      if (response?.aborted) {
-        return;
-      }
-
-      if (!response?.ok) {
-        showBubble(response?.error || t("bubbleTranslationFailed", "Could not translate."), "error", settings);
-        return;
-      }
-
-      showBubble(response.translation, "ready", settings, {
-        provider: response.provider,
-        cached: response.cached
-      });
-    }
-  );
+  try {
+    const port = ensureTranslatePort();
+    port.postMessage({ type: "translate-selection", text: selectedText });
+  } catch (error) {
+    showBubble(error instanceof Error ? error.message : t("bubbleTranslationFailed", "Could not translate."), "error", settings);
+  }
 }
 
 function parseDomainList(value) {

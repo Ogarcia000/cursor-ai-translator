@@ -84,6 +84,11 @@ export async function translateWithArgos(pythonPath, promptData) {
   });
 }
 
+export async function* streamTranslateWithArgos(pythonPath, promptData) {
+  const full = await translateWithArgos(pythonPath, promptData);
+  if (full) yield full;
+}
+
 export function stopArgosWorker() {
   if (argosWorker && !argosWorker.killed) {
     argosWorker.kill("SIGTERM");

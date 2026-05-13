@@ -7,6 +7,7 @@ import {
   PROVIDER_TIMEOUT_MS
 } from "../constants.mjs";
 import { buildFastTranslationPrompt } from "../prompts.mjs";
+import { iterSse } from "../streaming.mjs";
 
 let mlxServer = null;
 let mlxServerModel = "";
@@ -35,6 +36,33 @@ export async function translateWithMLX(port, model, promptData) {
   }
 
   return payload.choices?.[0]?.message?.content?.trim();
+}
+
+export async function* streamTranslateWithMLX(port, model, promptData, signal) {
+  await ensureMLXServer(port, model);
+
+  const response = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: buildFastTranslationPrompt(promptData) }],
+      stream: true,
+      temperature: 0,
+      max_tokens: 512
+    }),
+    signal: signal ?? AbortSignal.timeout(PROVIDER_TIMEOUT_MS)
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error?.message || payload.error || `MLX stream failed (${response.status}).`);
+  }
+
+  for await (const event of iterSse(response)) {
+    const chunk = event.choices?.[0]?.delta?.content;
+    if (chunk) yield chunk;
+  }
 }
 
 async function ensureMLXServer(port, model) {

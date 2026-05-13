@@ -14,7 +14,7 @@ import {
   getProviderConfig
 } from "./src/config.mjs";
 import { clearCache } from "./src/cache.mjs";
-import { translateText } from "./src/translate.mjs";
+import { translateText, translateTextStream } from "./src/translate.mjs";
 import { warmOllamaModel } from "./src/providers/ollama.mjs";
 import { stopMLXServer } from "./src/providers/mlx.mjs";
 import { stopArgosWorker } from "./src/providers/argos.mjs";
@@ -112,6 +112,35 @@ const server = http.createServer(async (request, response) => {
       const payload = await readJson(request);
       const result = await translateText(payload);
       sendJson(request, response, result.statusCode, result.body);
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/translate/stream") {
+      const payload = await readJson(request);
+      response.writeHead(200, {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+        ...buildCorsHeaders(request)
+      });
+
+      const controller = new AbortController();
+      request.on("close", () => controller.abort());
+
+      try {
+        for await (const event of translateTextStream(payload, controller.signal)) {
+          response.write(`${JSON.stringify(event)}\n`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Stream failed.";
+        try {
+          response.write(`${JSON.stringify({ type: "error", error: message, statusCode: 500 })}\n`);
+        } catch {
+          // socket may already be closed
+        }
+      } finally {
+        response.end();
+      }
       return;
     }
 

@@ -57,8 +57,19 @@
             <div id="provider-ollama" class="provider-panel">
               <div class="field-grid">
                 <label class="field">
+                  <span>Preset rapido</span>
+                  <select id="ollama-preset" name="ollamaPreset">
+                    <option value="qwen2.5:0.5b">Qwen 2.5 0.5B - mas rapido</option>
+                    <option value="tinyllama">TinyLlama 1.1B - liviano</option>
+                    <option value="gemma:2b">Gemma 2B - balanceado</option>
+                    <option value="gemma2:2b">Gemma 2 2B - balanceado</option>
+                    <option value="custom">Personalizado</option>
+                  </select>
+                </label>
+
+                <label class="field">
                   <span>Modelo Ollama</span>
-                  <input id="ollama-model" name="ollamaModel" type="text" autocomplete="off" placeholder="gemma3">
+                  <input id="ollama-model" name="ollamaModel" type="text" autocomplete="off" placeholder="qwen2.5:0.5b">
                 </label>
 
                 <label class="field">
@@ -66,7 +77,7 @@
                   <input id="ollama-base-url" name="ollamaBaseUrl" type="url" autocomplete="off" placeholder="http://127.0.0.1:11434/api">
                 </label>
               </div>
-              <p class="helper">Ollama debe estar instalado, corriendo y con el modelo ya descargado.</p>
+              <p class="helper">Para la sensacion de burbuja instantanea, empieza con `qwen2.5:0.5b` o `tinyllama`.</p>
             </div>
 
           </section>

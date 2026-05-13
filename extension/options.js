@@ -27,6 +27,7 @@ const zaiModel = document.querySelector("#zai-model");
 const zaiEndpoint = document.querySelector("#zai-endpoint");
 const ollamaModel = document.querySelector("#ollama-model");
 const ollamaBaseUrl = document.querySelector("#ollama-base-url");
+const ollamaPreset = document.querySelector("#ollama-preset");
 const bubbleTheme = document.querySelector("#bubble-theme");
 const accentColor = document.querySelector("#accent-color");
 const bubbleWidth = document.querySelector("#bubble-width");
@@ -67,7 +68,8 @@ async function init() {
     openaiModel.value = payload.openaiModel ?? "gpt-5.4-mini";
     zaiModel.value = payload.zaiModel ?? "glm-4.6";
     zaiEndpoint.value = payload.zaiEndpoint ?? "general";
-    ollamaModel.value = payload.ollamaModel ?? "gemma3";
+    ollamaModel.value = payload.ollamaModel ?? "qwen2.5:0.5b";
+    syncOllamaPreset();
     ollamaBaseUrl.value = payload.ollamaBaseUrl ?? "http://127.0.0.1:11434/api";
     openaiApiKey.placeholder = payload.hasOpenAiKey ? "Guardada en servidor local" : "Pega una API key";
     zaiApiKey.placeholder = payload.hasZaiKey ? "Guardada en servidor local" : "Pega una API key";
@@ -77,7 +79,8 @@ async function init() {
     openaiModel.value = "gpt-5.4-mini";
     zaiModel.value = "glm-4.6";
     zaiEndpoint.value = "general";
-    ollamaModel.value = "gemma3";
+    ollamaModel.value = "qwen2.5:0.5b";
+    syncOllamaPreset();
     ollamaBaseUrl.value = "http://127.0.0.1:11434/api";
   }
 
@@ -116,6 +119,12 @@ form?.addEventListener("submit", async (event) => {
 
 provider?.addEventListener("change", syncProviderPanels);
 remoteProvider?.addEventListener("change", syncProviderPanels);
+ollamaPreset?.addEventListener("change", () => {
+  if (ollamaPreset.value !== "custom") {
+    ollamaModel.value = ollamaPreset.value;
+  }
+});
+ollamaModel?.addEventListener("input", syncOllamaPreset);
 
 healthCheck?.addEventListener("click", async () => {
   try {
@@ -184,4 +193,9 @@ function syncProviderPanels() {
   Object.entries(providerPanels).forEach(([name, panel]) => {
     panel?.classList.toggle("is-active", name === activeProvider);
   });
+}
+
+function syncOllamaPreset() {
+  const presetValues = Array.from(ollamaPreset.options).map((option) => option.value);
+  ollamaPreset.value = presetValues.includes(ollamaModel.value) ? ollamaModel.value : "custom";
 }

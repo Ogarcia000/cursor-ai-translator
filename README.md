@@ -137,14 +137,25 @@ http://127.0.0.1:11434/api
 Con Ollama instalado y corriendo, descarga un modelo:
 
 ```bash
-ollama pull gemma3
+ollama pull qwen2.5:0.5b
 ```
 
 Luego, en la configuracion de la extension:
 
 - `Proveedor`: `Ollama local`
-- `Modelo Ollama`: `gemma3`
+- `Preset rapido`: `Qwen 2.5 0.5B`
 - `URL local`: `http://127.0.0.1:11434/api`
+
+Modelos ligeros recomendados:
+
+```bash
+ollama pull qwen2.5:0.5b
+ollama pull tinyllama
+ollama pull gemma:2b
+ollama pull gemma2:2b
+```
+
+Para la burbuja instantanea, empieza con `qwen2.5:0.5b` o `tinyllama`. Si quieres mejor balance entre calidad y velocidad, prueba `gemma:2b` o `gemma2:2b`.
 
 ## APIs remotas opcionales
 

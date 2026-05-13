@@ -20,7 +20,7 @@ const DEFAULT_SERVER_CONFIG = {
   zaiCodingBaseUrl: process.env.ZAI_CODING_BASE_URL ?? "https://api.z.ai/api/coding/paas/v4/",
   argosPythonPath: process.env.ARGOS_PYTHON_PATH ?? path.join(APP_DIR, ".venv-local", "bin", "python"),
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434/api",
-  ollamaModel: process.env.OLLAMA_MODEL ?? "gemma3"
+  ollamaModel: process.env.OLLAMA_MODEL ?? "qwen2.5:0.5b"
 };
 const MAX_TEXT_LENGTH = 4000;
 const TRANSLATION_CACHE_LIMIT = 120;
@@ -113,6 +113,14 @@ function buildPrompt({ text, targetLanguage, sourceLanguage }) {
     "Preserve meaning, punctuation, line breaks, and inline formatting where possible.",
     "Do not add explanations, labels, or quotation marks.",
     "",
+    text
+  ].join("\n");
+}
+
+function buildFastTranslationPrompt({ text, targetLanguage, sourceLanguage }) {
+  return [
+    `Translate from ${sourceLanguage || "auto"} to ${targetLanguage}.`,
+    "Return only the translation. Keep line breaks.",
     text
   ].join("\n");
 }
@@ -285,13 +293,15 @@ async function translateWithOllama(baseURL, model, promptData) {
       messages: [
         {
           role: "user",
-          content: buildPrompt(promptData)
+          content: buildFastTranslationPrompt(promptData)
         }
       ],
       stream: false,
       keep_alive: "10m",
       options: {
-        temperature: 0.2
+        temperature: 0,
+        num_ctx: 2048,
+        num_predict: 512
       }
     })
   });

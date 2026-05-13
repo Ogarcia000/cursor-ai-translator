@@ -7,12 +7,17 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
-    "check": "node --check server.mjs",
+    "check": "node --check server.mjs && node --check src/*.mjs && node --check src/providers/*.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "setup:argos": "uv venv .venv-local && uv pip install --python .venv-local/bin/python -r local-translator/requirements.txt",
     "model:argos:en-es": ".venv-local/bin/python local-translator/install_model.py en es",
     "model:argos:es-en": ".venv-local/bin/python local-translator/install_model.py es en"
   },
   "dependencies": {
     "openai": "^5.19.1"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
   }
 }

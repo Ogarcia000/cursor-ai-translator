@@ -1,0 +1,43 @@
+{
+  "extName": {
+    "message": "Cursor AI Translator",
+    "description": "Nombre que se muestra en Chrome."
+  },
+  "extDescription": {
+    "message": "Traduce texto seleccionado junto al cursor usando un puente local.",
+    "description": "Descripcion para la Chrome Web Store."
+  },
+  "bubbleTitle": {
+    "message": "AI Translate"
+  },
+  "bubbleTranslating": {
+    "message": "Traduciendo..."
+  },
+  "bubbleTranslationFailed": {
+    "message": "No se pudo traducir la seleccion."
+  },
+  "bubbleCanceledByNewSelection": {
+    "message": "Cancelada por una nueva seleccion."
+  },
+  "bubbleAriaCopy": {
+    "message": "Copiar traduccion"
+  },
+  "bubbleAriaSettings": {
+    "message": "Abrir configuracion"
+  },
+  "bubbleAriaClose": {
+    "message": "Cerrar"
+  },
+  "errorTokenMissing": {
+    "message": "Falta el token de pareo. Abre Opciones y pegalo desde la consola del servidor."
+  },
+  "errorTokenInvalid": {
+    "message": "Token de pareo invalido. Revisa Opciones."
+  },
+  "commandToggleAuto": {
+    "message": "Activar o desactivar traduccion automatica"
+  },
+  "commandTranslateNow": {
+    "message": "Traducir la seleccion actual ahora"
+  }
+}

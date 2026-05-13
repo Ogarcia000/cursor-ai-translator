@@ -1,0 +1,43 @@
+{
+  "extName": {
+    "message": "Cursor AI Translator",
+    "description": "Extension display name."
+  },
+  "extDescription": {
+    "message": "Translate selected text beside the cursor using a local bridge.",
+    "description": "Chrome Web Store description."
+  },
+  "bubbleTitle": {
+    "message": "AI Translate"
+  },
+  "bubbleTranslating": {
+    "message": "Translating..."
+  },
+  "bubbleTranslationFailed": {
+    "message": "Could not translate the selection."
+  },
+  "bubbleCanceledByNewSelection": {
+    "message": "Cancelled by a new selection."
+  },
+  "bubbleAriaCopy": {
+    "message": "Copy translation"
+  },
+  "bubbleAriaSettings": {
+    "message": "Open settings"
+  },
+  "bubbleAriaClose": {
+    "message": "Close"
+  },
+  "errorTokenMissing": {
+    "message": "Pairing token is missing. Open the Options page and paste it from the server console."
+  },
+  "errorTokenInvalid": {
+    "message": "Pairing token is invalid. Check the Options page."
+  },
+  "commandToggleAuto": {
+    "message": "Toggle automatic translation"
+  },
+  "commandTranslateNow": {
+    "message": "Translate the current selection now"
+  }
+}

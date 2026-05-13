@@ -8,7 +8,9 @@ const DEFAULT_SETTINGS = {
   bubbleWidth: "360",
   fontSize: "14",
   bubblePlacement: "cursor",
-  autoHideMs: "0"
+  autoHideMs: "0",
+  domainAllowlist: "",
+  domainBlocklist: ""
 };
 
 const COMMON_LANGUAGES = [
@@ -61,6 +63,8 @@ const fontSize = document.querySelector("#font-size");
 const bubblePlacement = document.querySelector("#bubble-placement");
 const autoHideMs = document.querySelector("#auto-hide-ms");
 const pairingToken = document.querySelector("#pairing-token");
+const domainAllowlist = document.querySelector("#domain-allowlist");
+const domainBlocklist = document.querySelector("#domain-blocklist");
 const providerPanels = {
   argos: document.querySelector("#provider-argos"),
   ollama: document.querySelector("#provider-ollama"),
@@ -97,6 +101,8 @@ async function init() {
   fontSize.value = settings.fontSize;
   bubblePlacement.value = settings.bubblePlacement;
   autoHideMs.value = settings.autoHideMs;
+  domainAllowlist.value = settings.domainAllowlist;
+  domainBlocklist.value = settings.domainBlocklist;
 
   const storedToken = await getStoredPairingToken();
   pairingToken.placeholder = storedToken ? "Token guardado (sobrescribe para cambiar)" : "Pega el token de la consola del servidor";
@@ -110,7 +116,7 @@ async function init() {
       provider.value = payload.provider ?? "argos";
       remoteProvider.value = "";
     }
-    openaiModel.value = payload.openaiModel ?? "gpt-5.4-mini";
+    openaiModel.value = payload.openaiModel ?? "gpt-4o-mini";
     zaiModel.value = payload.zaiModel ?? "glm-4.6";
     zaiEndpoint.value = payload.zaiEndpoint ?? "general";
     ollamaModel.value = payload.ollamaModel ?? "qwen2.5:0.5b";
@@ -124,7 +130,7 @@ async function init() {
   } catch {
     provider.value = "argos";
     remoteProvider.value = "";
-    openaiModel.value = "gpt-5.4-mini";
+    openaiModel.value = "gpt-4o-mini";
     zaiModel.value = "glm-4.6";
     zaiEndpoint.value = "general";
     ollamaModel.value = "qwen2.5:0.5b";
@@ -153,7 +159,9 @@ form?.addEventListener("submit", async (event) => {
     bubbleWidth: bubbleWidth.value,
     fontSize: fontSize.value,
     bubblePlacement: bubblePlacement.value,
-    autoHideMs: autoHideMs.value
+    autoHideMs: autoHideMs.value,
+    domainAllowlist: domainAllowlist.value.trim(),
+    domainBlocklist: domainBlocklist.value.trim()
   });
 
   const pastedToken = pairingToken.value.trim();

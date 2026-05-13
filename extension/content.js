@@ -13,6 +13,39 @@ function t(key, fallback) {
   return chrome.i18n?.getMessage?.(key) || fallback;
 }
 
+const TARGET_LANGUAGE_TO_ISO1 = {
+  English: "en",
+  Spanish: "es",
+  French: "fr",
+  German: "de",
+  Italian: "it",
+  Portuguese: "pt",
+  Chinese: "zh",
+  Japanese: "ja",
+  Korean: "ko",
+  Arabic: "ar",
+  Hindi: "hi",
+  Russian: "ru",
+  Dutch: "nl",
+  Polish: "pl",
+  Turkish: "tr",
+  Vietnamese: "vi",
+  Indonesian: "id",
+  Thai: "th",
+  Ukrainian: "uk"
+};
+
+function buildProviderChipLabel(event, settings) {
+  if (!event?.provider) return "";
+  const parts = [event.provider];
+  if (event.cached) parts.push("cache");
+  const target = TARGET_LANGUAGE_TO_ISO1[settings?.targetLanguage] ?? null;
+  if (event.detectedIso1 && target && event.detectedIso1 !== target) {
+    parts.push(`${event.detectedIso1} → ${target}`);
+  }
+  return parts.join(" · ");
+}
+
 function ensureTranslatePort() {
   if (STATE.port) {
     return STATE.port;
@@ -43,7 +76,7 @@ function ensureTranslatePort() {
       if (bubble) {
         const providerChip = bubble.querySelector(".cat-bubble__provider");
         if (providerChip && event.provider) {
-          providerChip.textContent = event.cached ? `${event.provider} · cache` : event.provider;
+          providerChip.textContent = buildProviderChipLabel(event, settings);
           providerChip.hidden = false;
         }
       }

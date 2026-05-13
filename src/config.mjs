@@ -1,12 +1,8 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import {
-  APP_DIR,
-  CONFIG_PATH,
-  ALLOWED_OLLAMA_HOSTS,
-  SUPPORTED_PROVIDERS
-} from "./constants.mjs";
+import { APP_DIR, CONFIG_PATH } from "./constants.mjs";
+import { configPayloadSchema, formatZodError } from "./schemas.mjs";
 
 export const DEFAULT_SERVER_CONFIG = {
   provider: (process.env.AI_PROVIDER ?? "argos").toLowerCase(),
@@ -45,42 +41,11 @@ export async function loadServerConfig() {
 }
 
 export function validateConfigInput(payload) {
-  const argosPythonPath = normalizeText(payload.argosPythonPath);
-  if (argosPythonPath) {
-    const resolved = path.resolve(APP_DIR, argosPythonPath);
-    const inProject = resolved === APP_DIR || resolved.startsWith(APP_DIR + path.sep);
-    if (!inProject) {
-      throw new Error("argosPythonPath must resolve inside the project directory.");
-    }
+  const result = configPayloadSchema.safeParse(payload ?? {});
+  if (!result.success) {
+    throw new Error(formatZodError(result.error));
   }
-
-  const ollamaBaseUrl = normalizeText(payload.ollamaBaseUrl);
-  if (ollamaBaseUrl) {
-    let parsed;
-    try {
-      parsed = new URL(ollamaBaseUrl);
-    } catch {
-      throw new Error("ollamaBaseUrl is not a valid URL.");
-    }
-    if (!ALLOWED_OLLAMA_HOSTS.has(parsed.hostname.toLowerCase())) {
-      throw new Error("ollamaBaseUrl must point to a loopback host.");
-    }
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error("ollamaBaseUrl must use http or https.");
-    }
-  }
-
-  if (payload.mlxPort !== undefined && payload.mlxPort !== "") {
-    const port = Number.parseInt(payload.mlxPort, 10);
-    if (!Number.isInteger(port) || port < 1024 || port > 65535) {
-      throw new Error("mlxPort must be an integer between 1024 and 65535.");
-    }
-  }
-
-  const provider = normalizeText(payload.provider).toLowerCase();
-  if (provider && !SUPPORTED_PROVIDERS.includes(provider)) {
-    throw new Error("provider is not supported.");
-  }
+  return result.data;
 }
 
 export async function saveServerConfig(payload) {

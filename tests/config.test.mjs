@@ -32,7 +32,7 @@ describe("validateConfigInput", () => {
 
   it("rejects malformed ollama url", () => {
     expect(() => validateConfigInput({ ollamaBaseUrl: "not a url" }))
-      .toThrow(/valid URL/);
+      .toThrow(/valid http\(s\) URL/);
   });
 
   it("rejects mlxPort out of range", () => {
@@ -45,7 +45,7 @@ describe("validateConfigInput", () => {
   });
 
   it("rejects unsupported provider", () => {
-    expect(() => validateConfigInput({ provider: "skynet" })).toThrow(/not supported/);
+    expect(() => validateConfigInput({ provider: "skynet" })).toThrow(/provider must be one of/);
   });
 
   it("accepts supported providers", () => {

@@ -115,6 +115,7 @@
               <label class="field">
                 <span>Tema</span>
                 <select id="bubble-theme" name="bubbleTheme">
+                  <option value="auto">Automatico (sistema)</option>
                   <option value="light">Claro</option>
                   <option value="dark">Oscuro</option>
                 </select>
@@ -174,6 +175,23 @@
             </label>
           </section>
 
+          <section class="subpanel">
+            <div class="subpanel__heading">
+              <h2>Sitios permitidos</h2>
+              <p>Lista separada por comas o saltos de linea. Soporta comodin como <code>*.example.com</code>. Si la lista permitida esta vacia, se traducen todos salvo los bloqueados.</p>
+            </div>
+            <div class="field-grid">
+              <label class="field">
+                <span>Solo en estos dominios</span>
+                <input id="domain-allowlist" name="domainAllowlist" type="text" autocomplete="off" placeholder="example.com, *.docs.example.org">
+              </label>
+              <label class="field">
+                <span>Nunca en estos dominios</span>
+                <input id="domain-blocklist" name="domainBlocklist" type="text" autocomplete="off" placeholder="bank.com, *.intranet">
+              </label>
+            </div>
+          </section>
+
           <details class="advanced">
             <summary>Avanzado</summary>
             <div class="advanced__body">
@@ -206,7 +224,7 @@
 
                     <label class="field">
                       <span>Modelo</span>
-                      <input id="openai-model" name="openaiModel" type="text" autocomplete="off" placeholder="gpt-5.4-mini">
+                      <input id="openai-model" name="openaiModel" type="text" autocomplete="off" placeholder="gpt-4o-mini">
                     </label>
                   </div>
                 </div>
@@ -220,7 +238,7 @@
 
                     <label class="field">
                       <span>Modelo</span>
-                      <input id="zai-model" name="zaiModel" type="text" autocomplete="off" placeholder="glm-4.7">
+                      <input id="zai-model" name="zaiModel" type="text" autocomplete="off" placeholder="glm-4.6">
                     </label>
 
                     <label class="field">

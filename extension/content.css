@@ -57,7 +57,8 @@
 }
 
 .cat-bubble__settings,
-.cat-bubble__close {
+.cat-bubble__close,
+.cat-bubble__copy {
   display: inline-grid;
   width: 28px;
   height: 28px;
@@ -75,8 +76,35 @@
 }
 
 .cat-bubble__settings:hover,
-.cat-bubble__close:hover {
+.cat-bubble__close:hover,
+.cat-bubble__copy:hover {
   background: color-mix(in srgb, var(--cat-accent) 14%, transparent);
+}
+
+.cat-bubble__copy[hidden] {
+  display: none;
+}
+
+.cat-bubble__copy[data-copied] {
+  color: var(--cat-accent);
+}
+
+.cat-bubble__provider {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cat-accent) 18%, transparent);
+  color: color-mix(in srgb, var(--cat-accent) 70%, #18181b);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cat-bubble__provider[hidden] {
+  display: none;
 }
 
 .cat-bubble__body {

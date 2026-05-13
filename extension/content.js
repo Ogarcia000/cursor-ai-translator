@@ -3,8 +3,73 @@ const STATE = {
   lastSelection: "",
   debounceId: null,
   hideTimer: null,
-  pointer: { x: 24, y: 24 }
+  pointer: { x: 24, y: 24 },
+  port: null,
+  streamBuffer: "",
+  currentSettings: null
 };
+
+function t(key, fallback) {
+  return chrome.i18n?.getMessage?.(key) || fallback;
+}
+
+function ensureTranslatePort() {
+  if (STATE.port) {
+    return STATE.port;
+  }
+
+  const port = chrome.runtime.connect({ name: "translate" });
+  STATE.port = port;
+
+  port.onMessage.addListener((event) => {
+    const settings = STATE.currentSettings ?? {};
+
+    if (event?.type === "chunk") {
+      STATE.streamBuffer += event.text;
+      const bubble = STATE.bubble ?? createBubble();
+      applyBubbleSettings(bubble, settings);
+      bubble.dataset.mode = "ready";
+      const body = bubble.querySelector(".cat-bubble__body");
+      if (body) body.textContent = STATE.streamBuffer;
+      const copy = bubble.querySelector(".cat-bubble__copy");
+      if (copy) copy.hidden = false;
+      bubble.hidden = false;
+      positionBubble(bubble, settings);
+      return;
+    }
+
+    if (event?.type === "done") {
+      const bubble = STATE.bubble;
+      if (bubble) {
+        const providerChip = bubble.querySelector(".cat-bubble__provider");
+        if (providerChip && event.provider) {
+          providerChip.textContent = event.cached ? `${event.provider} · cache` : event.provider;
+          providerChip.hidden = false;
+        }
+      }
+      STATE.streamBuffer = "";
+      scheduleAutoHide(settings);
+      return;
+    }
+
+    if (event?.type === "aborted") {
+      STATE.streamBuffer = "";
+      return;
+    }
+
+    if (event?.type === "error") {
+      STATE.streamBuffer = "";
+      showBubble(event.error || t("bubbleTranslationFailed", "Could not translate."), "error", settings);
+    }
+  });
+
+  port.onDisconnect.addListener(() => {
+    STATE.port = null;
+    STATE.streamBuffer = "";
+  });
+
+  return port;
+}
 
 document.addEventListener("pointermove", (event) => {
   STATE.pointer = { x: event.clientX, y: event.clientY };
@@ -15,10 +80,24 @@ document.addEventListener("pointerup", scheduleSelectionCheck, true);
 document.addEventListener("mouseup", scheduleSelectionCheck, true);
 document.addEventListener("keyup", scheduleSelectionCheck, true);
 document.addEventListener("scroll", handlePageScroll, true);
+document.addEventListener("pointerdown", handleClickOutside, true);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && STATE.bubble && !STATE.bubble.hidden) {
+    STATE.lastSelection = "";
+    hideBubble(true);
+  }
+});
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "force-translate-selection") {
+    STATE.lastSelection = "";
+    handleSelection();
+  }
+});
 
 function scheduleSelectionCheck() {
   window.clearTimeout(STATE.debounceId);
-  STATE.debounceId = window.setTimeout(handleSelection, 70);
+  STATE.debounceId = window.setTimeout(handleSelection, 150);
 }
 
 async function handleSelection() {
@@ -29,8 +108,15 @@ async function handleSelection() {
     bubbleWidth: "360",
     fontSize: "14",
     bubblePlacement: "cursor",
-    autoHideMs: "0"
+    autoHideMs: "0",
+    domainAllowlist: "",
+    domainBlocklist: ""
   });
+
+  if (!isCurrentDomainAllowed(settings)) {
+    return;
+  }
+
   const selectedText = getSelectedText();
 
   if (!settings.autoTranslate || selectedText.length < 2) {
@@ -39,32 +125,55 @@ async function handleSelection() {
     return;
   }
 
-  if (selectedText === STATE.lastSelection) {
+  const bubbleVisible = STATE.bubble && !STATE.bubble.hidden;
+  if (selectedText === STATE.lastSelection && bubbleVisible) {
     return;
   }
 
   STATE.lastSelection = selectedText;
-  showBubble("Traduciendo...", "loading", settings);
+  STATE.currentSettings = settings;
+  STATE.streamBuffer = "";
+  showBubble(t("bubbleTranslating", "Translating..."), "loading", settings);
 
-  chrome.runtime.sendMessage(
-    {
-      type: "translate-selection",
-      text: selectedText
-    },
-    (response) => {
-      if (chrome.runtime.lastError) {
-        showBubble(chrome.runtime.lastError.message, "error", settings);
-        return;
-      }
+  try {
+    const port = ensureTranslatePort();
+    port.postMessage({ type: "translate-selection", text: selectedText });
+  } catch (error) {
+    showBubble(error instanceof Error ? error.message : t("bubbleTranslationFailed", "Could not translate."), "error", settings);
+  }
+}
 
-      if (!response?.ok) {
-        showBubble(response?.error || "No se pudo traducir.", "error", settings);
-        return;
-      }
+function parseDomainList(value) {
+  return (value || "")
+    .split(/[\s,]+/)
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
 
-      showBubble(response.translation, "ready", settings);
+function hostnameMatches(hostname, patterns) {
+  return patterns.some((pattern) => {
+    if (pattern.startsWith("*.")) {
+      const suffix = pattern.slice(2);
+      return hostname === suffix || hostname.endsWith(`.${suffix}`);
     }
-  );
+    return hostname === pattern || hostname.endsWith(`.${pattern}`);
+  });
+}
+
+function isCurrentDomainAllowed(settings) {
+  const hostname = (location.hostname || "").toLowerCase();
+  if (!hostname) {
+    return true;
+  }
+  const blocklist = parseDomainList(settings.domainBlocklist);
+  if (blocklist.length && hostnameMatches(hostname, blocklist)) {
+    return false;
+  }
+  const allowlist = parseDomainList(settings.domainAllowlist);
+  if (allowlist.length && !hostnameMatches(hostname, allowlist)) {
+    return false;
+  }
+  return true;
 }
 
 function getSelectedText() {
@@ -99,11 +208,13 @@ function createBubble() {
     <div class="cat-bubble__header">
       <div class="cat-bubble__identity">
         <span class="cat-bubble__dot"></span>
-        <strong>AI Translate</strong>
+        <strong>${t("bubbleTitle", "AI Translate")}</strong>
+        <span class="cat-bubble__provider" hidden></span>
       </div>
       <div class="cat-bubble__actions">
-        <button type="button" class="cat-bubble__settings" aria-label="Abrir configuracion">⚙</button>
-        <button type="button" class="cat-bubble__close" aria-label="Cerrar">x</button>
+        <button type="button" class="cat-bubble__copy" aria-label="${t("bubbleAriaCopy", "Copy translation")}" hidden>⧉</button>
+        <button type="button" class="cat-bubble__settings" aria-label="${t("bubbleAriaSettings", "Open settings")}">⚙</button>
+        <button type="button" class="cat-bubble__close" aria-label="${t("bubbleAriaClose", "Close")}">×</button>
       </div>
     </div>
     <div class="cat-bubble__body"></div>
@@ -119,6 +230,22 @@ function createBubble() {
     hideBubble(true);
   });
 
+  bubble.querySelector(".cat-bubble__copy")?.addEventListener("click", async () => {
+    const body = bubble.querySelector(".cat-bubble__body");
+    const text = body?.textContent ?? "";
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      const copy = bubble.querySelector(".cat-bubble__copy");
+      if (copy) {
+        copy.dataset.copied = "1";
+        window.setTimeout(() => delete copy.dataset.copied, 1200);
+      }
+    } catch {
+      // clipboard API may be blocked; silently ignore
+    }
+  });
+
   bubble.addEventListener("pointerdown", () => {
     window.clearTimeout(STATE.hideTimer);
   });
@@ -126,6 +253,17 @@ function createBubble() {
   document.documentElement.appendChild(bubble);
   STATE.bubble = bubble;
   return bubble;
+}
+
+function handleClickOutside(event) {
+  if (!STATE.bubble || STATE.bubble.hidden) {
+    return;
+  }
+  if (STATE.bubble.contains(event.target)) {
+    return;
+  }
+  STATE.lastSelection = "";
+  hideBubble(true);
 }
 
 function handlePageScroll(event) {
@@ -157,7 +295,7 @@ function clearActiveSelection() {
   activeElement.setSelectionRange(caretPosition, caretPosition);
 }
 
-function showBubble(text, mode, settings) {
+function showBubble(text, mode, settings, meta = {}) {
   const bubble = STATE.bubble ?? createBubble();
   bubble.dataset.mode = mode;
   applyBubbleSettings(bubble, settings);
@@ -165,6 +303,24 @@ function showBubble(text, mode, settings) {
   const body = bubble.querySelector(".cat-bubble__body");
   if (body) {
     body.textContent = text;
+  }
+
+  const providerChip = bubble.querySelector(".cat-bubble__provider");
+  if (providerChip) {
+    if (mode === "ready" && meta.provider) {
+      const label = meta.cached ? `${meta.provider} · cache` : meta.provider;
+      providerChip.textContent = label;
+      providerChip.hidden = false;
+    } else {
+      providerChip.hidden = true;
+      providerChip.textContent = "";
+    }
+  }
+
+  const copyButton = bubble.querySelector(".cat-bubble__copy");
+  if (copyButton) {
+    copyButton.hidden = mode !== "ready";
+    delete copyButton.dataset.copied;
   }
 
   bubble.hidden = false;
@@ -185,7 +341,10 @@ function hideBubble(resetSelection) {
 }
 
 function applyBubbleSettings(bubble, settings) {
-  bubble.dataset.theme = settings.bubbleTheme;
+  const theme = settings.bubbleTheme === "auto"
+    ? (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    : settings.bubbleTheme;
+  bubble.dataset.theme = theme;
   bubble.style.setProperty("--cat-accent", settings.accentColor);
   bubble.style.setProperty("--cat-width", `${settings.bubbleWidth}px`);
   bubble.style.setProperty("--cat-font-size", `${settings.fontSize}px`);
